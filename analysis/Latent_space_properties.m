@@ -1,13 +1,15 @@
-% analysis script
-
+% Analyses after the latent space identification
+% Figure 3 - Figure 6
+addpath(genpath(pwd))
 ld=load('../data/condsubldspace.mat');
 ldspace = sortrows(ld.ldspace,2);
 subidx = grp2idx(ldspace(:,2));
 LD_table = cell2table(ld.ldspace(:,1:10),...
     "VariableNames",["condition" "participation" "trial" "LD1" "LD2" "LD3" "LD4" "LD5" "LD6" "LD7"]);
 
-%% Test the trait-state hierarchy
-% centroid of each subject
+%% Figure 3D Test the trait-state hierarchy
+
+% calculate centroid of each subject
 subnames = unique(ld.ldspace(:,2));
 condlist = {'tm','tmoc','tmrv'};
 k=0;
@@ -26,7 +28,7 @@ for i=1:size(subnames,1)
     end
 end
 
-% calculate  between vs within subject distance
+% calculate the actual between vs within subject distance
 bwd0 =inter_ind_vs_state_distance(subcondcentroid);
 
 % permutation
@@ -49,14 +51,74 @@ plot([bwd0, bwd0],y1);
 xlabel('Inter/Intra Individual Distance');
 ylabel('Count');
 p = sum(bwd0 < bwd) / n_perm;
-% title(['p = ', num2str(p)])
 mean_bw = mean(bwd);
 std_bw = std(bwd);
+disp(['permuted p = ', int2str(p)])
 
+%% Figure 3E Clustering subjects
+edist = squareform(pdist(cell2mat(ldspace(:,4:10)),'seuclidean'));
+[edist_sub] = extract_dissimilar(edist, subidx, unique(ldspace(:,2)));
+Z = linkage(edist_sub);
+figure();
+new_label = {'S1-1','S1-2','S2-1','S2-2','S3-1','S3-2','S4-1','S5-1','S6-1','S7-1',...
+    'S7-2','S8-1','S9-1','S10-1','S10-2','S11-1','S12-1','S13-1','S14-1','S15-1'};
+[H,T,OUTPERM] = dendrogram(Z, 'Labels',new_label);
+for i=1:19
+    H(i).Color = [0,0,0];
+end
+xtickangle(45);
+ylabel('Latent EEG Distance');
+xlabel('Participation');
 
+% calculate distance within individual & between individual
 
+pairlist = [1,2;3,4;5,6;10,11;14,15];
+dist_within = [];
+dist_between = [];
+count=0
+for s1 = 1:19
+    for s2 = (s1+1):20
+        count=count+1;
+        if find(pairlist(:,1) == s1)
+            if (s2 - s1) == 1
+                dist_within(end+1) = edist_sub(s1,s2);
+            else
+                dist_between(end+1) = edist_sub(s1,s2);
+            end          
+        else
+            dist_between(end+1) = edist_sub(s1,s2);
+        end
+    end
+end
+% stats
+mean_dist_between = mean(dist_between);
+std_dist_between = std(dist_between);
+mean_dist_within = mean(dist_within);
+std_dist_within = std(dist_within);
+[h,p,ci,stats]=ttest2(dist_between,dist_within);
+disp(['T(',int2str(stats.df),')=',num2str(stats.tstat),', p=',num2str(p)])
 
-%% Within same individual vs. between different individual distance
+%% Figure 4: RSA analysis
+edist = squareform(pdist(cell2mat(ldspace(:,4:10)),'seuclidean'));
+load('mixed_model_all.mat');
+behvars = behmat(:,4:10);
+behdist = squareform(pdist(table2array(behvars), 'seuclidean'));
+% correlate with edist
+r = corr(uptriangle(behdist), uptriangle(edist));
+scatter(uptriangle(edist),uptriangle(behdist), 3,'filled','MarkerFaceAlpha',.05)
+ylabel('Behavioral distance');
+xlabel('EEG distance');
+title(['All: r = ', num2str(round(r,3))]);
+lsline;
+% permutation to assess the statistical significance, p
+[r_news, r0, p] = permRSA(behdist, edist, 5000);
+
+% if without the lower cluster
+a = uptriangle(behdist);
+b = uptriangle(edist);
+mask_b = (b>1)
+corr(a(mask_b),b(mask_b))
+%% Figure 5A: within same individual vs. between different individual distance
 pairlist = [1,2;3,4;5,6;10,11;14,15];
 
 % calculate the actual distribution
@@ -106,7 +168,6 @@ for sim=1:1000
 end
 
 
-
 % test significance
 stats = {};
 for ld=1:7
@@ -129,10 +190,10 @@ bar(mean(ratio_sameld_all,2)');
 yline(mean(ratio_null_all))
 ylim([0 5]);
 xlabel('LD');
-ylabel('Within repeated subjects / Between any subjects')
+ylabel('Repeated/Non-repeated participation distance ratio')
 
 
-%% anova on normalized LD to test inter-state (intra-individual) differences
+%% Figure 5B: anova on normalized LD to test inter-state (intra-individual) differences
 % first normalize the LD
 LD_norm = [];
 for i=1:size(LD_table,1)
@@ -155,25 +216,11 @@ stds = [std(LD_norm(1:116,:),[],1);std(LD_norm(117:232,:),[],1);std(LD_norm(233:
 p_cond_bonf = p_cond*7;
 
 
-%% RSA analysis
-edist = squareform(pdist(cell2mat(ldspace(:,4:10)),'seuclidean'));
-load('mixed_model_all.mat');
-behvars = behmat(:,4:10);
-behdist = squareform(pdist(table2array(behvars), 'seuclidean'));
-% correlate with edist
-r = corr(uptriangle(behdist), uptriangle(edist));
-scatter(uptriangle(edist),uptriangle(behdist), 3,'filled','MarkerFaceAlpha',.05)
-ylabel('Behavioral distance');
-xlabel('EEG distance');
-title(['All: r = ', num2str(round(r,3))]);
-lsline;
-% permutation to assess the statistical significance, p
-[r_news, r0, p] = permRSA(behdist, edist, 5000);
 
-%% 2-stage tracing of the LD to PSD
+%% Figure 6: 2-stage tracing of the LD to PSD
 % LD -> NMF done in Python and output saved
-label_data = readtable([ '../data/PSD_label.csv');
-load(['../LD_NMF_important.mat']);
+label_data = readtable('../data/PSD_label.csv');
+load(['../data/LD_NMF_important.mat']);
 heatmap(NMF_per_LD);
 
 % find the NMF primary components to LD 1, 3, 5
@@ -187,8 +234,8 @@ for LD = [1,3,5]
 end
 
 % NMF -> PSD
-load([datapath,'NMF_H.mat']);
-load([datapath,'NMF_scores.mat']);
+load(['../data/NMF_H.mat']);
+load(['../data/NMF_scores.mat']);
 load('bluewhiteorange.mat');
 cmap = colormap(:,1:3);
 clearvars colormap
@@ -215,9 +262,9 @@ for NMF = [3,30]
     caxis([-0.12,0.12]);
 end
 
-%% direct map from LD to PSD
+%% Figure 6-2: direct map from LD to PSD
 load(['../data/LD_NMF_project.mat']);
-load(['../NMF_H.mat']);
+load(['../data/NMF_H.mat']);
 load('bluewhiteorange.mat');
 cmap = colormap(:,1:3);
 clearvars colormap
@@ -248,7 +295,7 @@ for ld=1:7
 end
 
 % make all the plots
-for ld=7
+for ld=1:7
     for freq=1:4
         figure;
         subplot(1,4,1)
@@ -263,22 +310,3 @@ for ld=7
         end
     end
 end
-
-%% sanity check
-original = mean(psd_norm_final{4}(condinx(:,1),:),1);
-weight = LD_2_chan{3}(:,1)';
-combined = original.*weight;
-heatmap([original;weight;combined]);
-plot_topography('all', combined,1,  'biosemi128_corrected.mat');
-
-load('../data/NormPSD.mat');
-plot_topography('all', mean(psd_norm_final{4}(condinx(:,1),:),1),1,  'biosemi128_corrected.mat');
-figure;
-heatmap(mean(psd_norm_final{4}(condinx(:,1),:),1));
-caxis([-1 1]) 
-colormap(bwrcolormap);
-
-figure;
-heatmap(LD_2_chan{3}(1,:));
-caxis([-200 200]) 
-colormap(bwrcolormap);
