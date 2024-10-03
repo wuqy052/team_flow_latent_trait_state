@@ -113,6 +113,21 @@ lsline;
 % permutation to assess the statistical significance, p
 [r_news, r0, p] = permRSA(behdist, edist, 5000);
 
+% reorder the matrix for better visualization
+subject_order = {'AR2','ML1','CN2','ZH1','CN1','IC1','IC2','WL1','EK2','HH1','SP1','TD1',...
+    'LP1','MD1','MD2','AR1','EK1','EM1','HK1','LX1'};
+for i = 1:length(ldspace)
+    ldspace{i,13} = i; % original order
+    ldspace{i,14} = find(strcmp(subject_order,ldspace{i,2})); 
+end
+sort_mat = cell2table(ldspace);
+sorted_mat = sortrows(sort_mat,[14,1,3]);
+order = sorted_mat.ldspace13;
+behdist_sorted = behdist(order,:);
+behdist_sorted = behdist_sorted(:,order);
+edist_sorted = edist(order,:);
+edist_sorted = edist_sorted(:,order);
+
 % if without the lower cluster
 a = uptriangle(behdist);
 b = uptriangle(edist);
