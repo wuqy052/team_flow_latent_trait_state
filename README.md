@@ -2,9 +2,11 @@
 
 Qianying Wu, Shigeki Nakauchi, Mohammad Shehata, Shinsuke Shimojo
 
-**Now published at Scientific Report**
+## Now published at Scientific Report
 
 [Open Access Online Full-text](https://www.nature.com/articles/s41598-025-95916-9)
+
+## Visual Abstract
 
 <img src="cover.jpg" alt="Visual Abstract" width="600"/>
 
