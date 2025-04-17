@@ -5,7 +5,9 @@ import pandas as pd
 import numpy as np
 from scipy import stats
 import seaborn as sns
+import os
 
+os.chdir('/Users/wuqy0214/Documents/GitHub/team_flow_latent_trait_state/figures') # change to the directory containing this file
 # 2. Identification of the latent space
 # 2A. training & validation heatmap
 # training
@@ -341,6 +343,36 @@ plt.yticks(fontsize=12)
 plt.ylim([0,110])
 plt.tight_layout()
 plt.savefig("output/FigS1B.jpeg",dpi=300)
+
+# RSA correlation without repeated subjects
+rsa_corr_trial = pd.read_csv('Figure_RSA_corr.csv')
+edist_norepeat = rsa_corr_trial['edist'].loc[rsa_corr_trial['repeated']==0]
+behdist_norepeat = rsa_corr_trial['beh'].loc[rsa_corr_trial['repeated']==0]
+plt.rcParams.update({'font.family':'avenir'})
+plt.rcParams["figure.figsize"] = (6,5)
+plt.scatter(edist_norepeat,behdist_norepeat,s=10,alpha=0.1,c='#41b6c4')
+#find line of best fit
+a3, b3 = np.polyfit(edist_norepeat,behdist_norepeat, 1)
+plt.plot( rsa_corr_trial.edist,a3*rsa_corr_trial.edist+b3,c=[221/256,221/256,221/256])
+plt.ylabel('Skill/Cognition Distance',fontsize=20)
+plt.yticks([0,2,4,6,8],[0,2,4,6,8],fontsize = 17)
+plt.xlabel('Latent EEG distance',fontsize=20)
+plt.xticks([0,2,4,6],[0,2,4,6],fontsize=17)
+plt.tight_layout()
+plt.savefig("output/Fig4-1A.jpeg")
+plt.show()
+corr_coef = stats.pearsonr(edist_norepeat,behdist_norepeat)
+# permutation test
+rsa_perm_trial = pd.read_csv('Figure_RSA_permutation.csv')
+plt.rcParams["figure.figsize"] = (6,5)
+plt.hist(rsa_perm_trial.r_perm,bins=100,color='#41b6c4')
+plt.xlabel('Permuted R',fontsize=20)
+plt.xticks([-0.1,-0.05,0,0.05,0.1],[-0.1,-0.05,0,0.05,0.1],fontsize = 17)
+plt.ylabel('Count',fontsize=20)
+plt.yticks([0,40,80,120,160],[0,40,80,120,160],fontsize=17)
+plt.axvline(x=corr_coef[0],c=[244/256,165/256,130/256],lw=2)
+plt.tight_layout()
+plt.savefig("output/Fig4-1B.jpeg")
 
 # S4
 # bar plots for all LDs across 3 conditions
